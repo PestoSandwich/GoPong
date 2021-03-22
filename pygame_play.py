@@ -30,9 +30,9 @@ RESET_COLOR = (190, 214, 230)
 
 control = ''
 
-dead_img = pygame.transform.scale(pygame.image.load('dist/assets/dead.png'), (BOX_WIDTH, BOX_HEIGHT))
-red_img = pygame.transform.scale(pygame.image.load('dist/assets/blue_live.png'), (BOX_WIDTH, BOX_HEIGHT))
-blue_img = pygame.transform.scale(pygame.image.load('dist/assets/red_live.png'), (BOX_WIDTH, BOX_HEIGHT))
+dead_img = pygame.transform.scale(pygame.image.load('../dist/assets/dead.png'), (BOX_WIDTH, BOX_HEIGHT))
+red_img = pygame.transform.scale(pygame.image.load('../dist/assets/blue_live.png'), (BOX_WIDTH, BOX_HEIGHT))
+blue_img = pygame.transform.scale(pygame.image.load('../dist/assets/red_live.png'), (BOX_WIDTH, BOX_HEIGHT))
 
 
 def mouseposition_to_rowcolumn(x, y):
@@ -372,7 +372,7 @@ class Game:
                 x_coordinate = init_x + BOX_MARGIN + column * (BOX_MARGIN + BOX_WIDTH)
                 y_coordinate = init_y + BOX_MARGIN + row * (BOX_MARGIN + BOX_HEIGHT)
                 rect = pygame.Rect(x_coordinate, y_coordinate,
-                                   BOX_WIDTH, BOX_HEIGHT)
+                                        BOX_WIDTH, BOX_HEIGHT)
                 pygame.draw.rect(self.display, color, rect, 0)
                 if board[row][column] == 2:
                     if player == 1:

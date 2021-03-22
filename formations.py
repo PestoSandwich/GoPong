@@ -1,44 +1,4 @@
-def rowup_formations():
-    formations = []
-    formations.append([[0, 0], [1, 0], [1, 1], [2, 1]])
-    formations.append([[-1, -1], [0, -1], [0, 0], [1, 0]])
-    formations.append([[0, 0], [1, 0], [1, -1], [2, -1]])
-    formations.append([[-1, 1], [0, 1], [0, 0], [1, 0]])
-    formations.append([[0, -1], [0, 0], [1, 0], [1, 1]])
-    formations.append([[1, -1], [1, 0], [0, 0], [0, 1]])
-    formations.append([[0, 0], [1, 0], [-1, 0]])
-    formations.append([[0, 0], [2, 0], [1, 0]])
-    return formations
-
-
-def rowdown_formations():
-    formations = []
-    formations.append([[-2, -1], [-1, -1], [-1, 0], [0, 0]])
-    formations.append([[-2, 1], [-1, 1], [-1, 0], [0, 0]])
-    formations.append([[-1, 0], [0, 0], [0, -1], [1, -1]])
-    formations.append([[-1, 0], [0, 0], [0, 1], [1, 1]])
-    formations.append([[-1, -1], [-1, 0], [0, 0], [0, 1]])
-    formations.append([[0, -1], [0, 0], [-1, 0], [-1, 1]])
-    formations.append([[0, 0], [-1, 0], [-2, 0]])
-    return formations
-
-
-def colup_formations():
-    formations = []
-    formations.append([[0, 0], [0, 1], [1, 1], [1, 2]])
-    formations.append([[0, 0], [0, 1], [-1, 1], [-1, 2]])
-    formations.append([[0, 0], [0, -1], [0, 1]])
-    formations.append([[0, 0], [0, 2], [0, 1]])
-    return formations
-
-
-def coldown_formations():
-    formations = []
-    formations.append([[-1, -2], [-1, -1], [0, -1], [0, 0]])
-    formations.append([[1, -2], [1, -1], [0, -1], [0, 0]])
-    formations.append([[0, 0], [0, -1], [0, -2]])
-    return formations
-
+# representation of all the formations that are possible in vectors from a checked piece.
 
 def all_formations():
     formations = []
@@ -73,6 +33,7 @@ def all_formations():
     formations.append([[0, 0], [0, 2], [0, 1]])
     return formations
 
+# Check if the selected formation would fall outside of the game_board. If not, return true and the formation
 def checkFormation(formation, row, column, rows, columns):
     valid = True
     newformation = []

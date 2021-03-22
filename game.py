@@ -15,10 +15,14 @@ doprint = False
 # ---------------------------------------------------------------------------------------------------------------------------
 # Gym class which operates the game
 
+
+# represent the boardstate in a way deeplearning algoritms can work with. [2, board.positions + 4]
 def get_observation(pro, ant):
+    # flatten the boardstate of player 1 in a single list
     p1_observation = [j for sub in pro.get_board() for j in sub]
-    p1_observation.extend(hf.decimal_to_array(pro.hp + 3))
     p2_observation = [j for sub in ant.get_board() for j in sub]
+    # add the hitpoints of the player to the end to the list represented in ternary. '+3' is added to avoid negative hp
+    p1_observation.extend(hf.decimal_to_array(pro.hp + 3))
     p2_observation.extend(hf.decimal_to_array(ant.hp + 3))
     return [p1_observation, p2_observation]
 
@@ -27,9 +31,23 @@ class GymGame(gym.Env, ABC):
     def __init__(self, p1_type, p2_type):
         self.p1_bot = None
         self.p2_bot = None
+        # TODO probably should make save_game private: '__save_game' to be in line with the existing getter method
+        self.save_game = True
+        self.turn = 0
         self.p1_type = p1_type
         self.p2_type = p2_type
 
+        # calculate action space and observation space from board_rows and board_columns
+
+        self.board_rows = BOARD_ROWS
+        self.board_columns = BOARD_COLUMNS
+        self.board_positions = int(self.board_columns * self.board_rows)
+        self.observation_shape = (2, self.board_rows * self.board_columns + 3)
+        self.observation_space = spaces.Box(low=0, high=2, shape=self.observation_shape, dtype=np.int64)
+        self.action_input_shape = self.board_positions + self.board_positions * self.board_positions
+        self.action_space = gym.spaces.Discrete(self.action_input_shape)
+
+        # initialize bots
         if self.p1_type == MARK_MINIMAX_1:
             self.p1_bot = MarkMiniMax()
             self.p1_bot.search_depth = 1
@@ -48,24 +66,16 @@ class GymGame(gym.Env, ABC):
         else:
             self.p2_bot = MarkMiniMax()
 
-        # if env_config is None:
-        #     env_config = {}
-        self.save_game = True
-        self.turn = 0
-        self.board_rows = BOARD_ROWS
-        self.board_columns = BOARD_COLUMNS
-        self.board_positions = int(self.board_columns * self.board_rows)
-        self.observation_shape = (2, self.board_rows * self.board_columns + 3)
-        self.observation_space = spaces.Box(low=0, high=2, shape=self.observation_shape, dtype=np.int64)
-        self.action_input_shape = self.board_positions + self.board_positions * self.board_positions
-        self.action_space = gym.spaces.Discrete(self.action_input_shape)
-
+        # Initialize players, for performance: new players must be created as copies of existing player objects.
+        # player_id = 100 for player 1 and 200 for player 2.
+        # player 1 makes the first move.
         self.p1 = Player(100, self.p1_bot)
         self.p1.initialize()
         self.p2 = Player(200, self.p2_bot)
         self.p2.initialize()
         self.stored_game = None
 
+    # getter method in case I want the original to not be editted outside of this class.
     def get_saved_game(self):
         return self.stored_game
 

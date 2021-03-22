@@ -4,10 +4,10 @@ import gym
 from savegame import SaveGame
 from gym import spaces
 from player import Player
-from search import MinMax
 import numpy as np
 from settings import *
 import helperfunctions as hf
+from bots.mark_minimax.markminimax import MarkMiniMax
 
 doprint = False
 
@@ -24,22 +24,45 @@ def get_observation(pro, ant):
 
 
 class GymGame(gym.Env, ABC):
-    def __init__(self, env_config=None):
-        if env_config is None:
-            env_config = {}
+    def __init__(self, p1_type, p2_type):
+        self.p1_bot = None
+        self.p2_bot = None
+        self.p1_type = p1_type
+        self.p2_type = p2_type
+
+        if self.p1_type == MARK_MINIMAX_1:
+            self.p1_bot = MarkMiniMax()
+            self.p1_bot.search_depth = 1
+        elif self.p1_type == MARK_MINIMAX_2:
+            self.p1_bot = MarkMiniMax()
+            self.p1_bot.search_depth = 2
+        else:
+            self.p1_bot = MarkMiniMax()
+
+        if self.p2_type == MARK_MINIMAX_1:
+            self.p2_bot = MarkMiniMax()
+            self.p2_bot.search_depth = 1
+        elif self.p2_type == MARK_MINIMAX_2:
+            self.p2_bot = MarkMiniMax()
+            self.p2_bot.search_depth = 2
+        else:
+            self.p2_bot = MarkMiniMax()
+
+        # if env_config is None:
+        #     env_config = {}
         self.save_game = True
         self.turn = 0
         self.board_rows = BOARD_ROWS
         self.board_columns = BOARD_COLUMNS
         self.board_positions = int(self.board_columns * self.board_rows)
         self.observation_shape = (2, self.board_rows * self.board_columns + 3)
-        self.observation_space = spaces.Box(low=0, high=2, shape=self.observation_shape, dtype=np.int)
+        self.observation_space = spaces.Box(low=0, high=2, shape=self.observation_shape, dtype=np.int64)
         self.action_input_shape = self.board_positions + self.board_positions * self.board_positions
         self.action_space = gym.spaces.Discrete(self.action_input_shape)
 
-        self.p1 = Player(100)
+        self.p1 = Player(100, self.p1_bot)
         self.p1.initialize()
-        self.p2 = Player(200)
+        self.p2 = Player(200, self.p2_bot)
         self.p2.initialize()
         self.stored_game = None
 
@@ -74,7 +97,3 @@ class GymGame(gym.Env, ABC):
 
         self.turn += 1
         return observation, reward, done, None
-
-    def start_minmax(self, player_1, player_2):
-        minmax = MinMax(player_1, player_2, SEARCHDEPTH)
-        return minmax.start_minmax()

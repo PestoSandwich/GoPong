@@ -4,14 +4,14 @@ import helperfunctions as hf
 
 
 class Player:
-    def __init__(self, player_id):
+    def __init__(self, player_id, bot):
+        self.bot = bot
         self.action_shape = 0
         self.num_active = 0
         self.__board_rating = 0
         self.hp = 7
         self.__grid = None
         self.player_id = player_id
-        self.prune_set = []
         self.threatened_attacks = []
 
     def initialize(self):
@@ -19,21 +19,19 @@ class Player:
         self.__grid = [[0 for x in range(BOARD_COLUMNS)] for y in range(BOARD_ROWS)]
         self.action_shape = (BOARD_COLUMNS * BOARD_ROWS) * (
                 BOARD_COLUMNS * BOARD_ROWS) + BOARD_COLUMNS * BOARD_ROWS
-        self.populate_prunelist()
 
     def get_copy(self):
-        clone = Player(self.player_id + 1)
+        clone = Player(self.player_id + 1, self.bot)
         clone.action_shape = self.action_shape
         clone.setCopyBoard(self.__grid)
         clone.num_active = self.num_active
         clone.hp = self.hp
         clone.__board_rating = self.__board_rating
-        clone.prune_set = self.prune_set
         clone.threatened_attacks = [[*attack] for attack in self.threatened_attacks]
         return clone
 
     def get_rating(self):
-        return self.__board_rating + self.hp * HITPOINTS
+        return self.bot.get_combined_rating(self.__board_rating, self.hp)
 
     def isvalid(self, value, r, c):
         if self.__grid[r][c] < value:
@@ -41,47 +39,7 @@ class Player:
         return False
 
     def __rate_cell(self, r, c):
-        rating = 0
-        # What is the value of the cell
-        if r == 0 or r == BOARD_ROWS - 1:
-            rating += FRONTBACK_SIDE_PLACEMENT_PENALTY
-        if c == 0 or c == BOARD_COLUMNS - 1:
-            rating += SIDE_PLACEMENT_PENALTY
-        if self.__grid[r][c] == 1:
-            rating += BASE_INACTIVE
-            if r % 2 == 0:
-                rating += EVEN_ROWS
-            # Is the cell placed poorly?
-            if r + 1 < BOARD_ROWS:
-                if self.__grid[r + 1][c] != 0:
-                    rating += INACTIVE_HIDING_PENALTY
-        elif self.__grid[r][c] == 2:
-            rating += BASE_ACTIVE
-            if r % 2 == 0:
-                rating += EVEN_ROWS
-            # Is the cell placed poorly?
-            if r + 1 < BOARD_ROWS:
-                if self.__grid[r + 1][c] != 0:
-                    rating += INACTIVE_HIDING_PENALTY
-
-        return rating
-
-    def populate_prunelist(self):
-        pruneset = set()
-        safeset = set()
-        for action in range(self.action_shape):
-            vrc = hf.action_to_vrc(action)
-            if len(vrc) > 1:
-                if (vrc[0][2] == vrc[1][2]) and (abs(vrc[0][1] - vrc[1][1]) <= 1):
-                    pruneset.add(action)
-                else:
-                    order_pair = [vrc[1], vrc[0]]
-                    order_pair_action = hf.vrc_to_action(order_pair)
-                    if order_pair_action not in safeset:
-                        safeset.add(action)
-                        pruneset.add(order_pair_action)
-
-        self.prune_set = pruneset
+        return self.bot.rate_cell(r, c, self.__grid)
 
     def reset(self, grid, hp):
         self.setCustomBoard(grid)

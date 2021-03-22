@@ -5,7 +5,7 @@ import numpy as np
 import helperfunctions as hf
 from threading import Thread, Lock
 from settings import *
-from search import MinMax
+from bots.mark_minimax.markminimax import MarkMiniMax
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -58,21 +58,24 @@ class CommandLineInput:
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, p1_type, p2_type):
         self.confirm = False
         self.reset = False
         self.selected = 0
-        self.done = False
-        self.env = GymGame()
         self.stage = 'play'  # Play/ Review
-        self.p1_type = 'user'
-        self.p2_type = 'minmax'
+        self.done = False
+        self.player_1 = None
+        self.player_2 = None
+
+        self.p1_type = p1_type
+        self.p2_type = p2_type
+
+        self.env = GymGame(p1_type, p2_type)
+
         self.max_x_pos = BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH)
         self.max_y_pos = BOARD_ROWS * (BOX_MARGIN + BOX_HEIGHT)
         self.stored_moves = []
         self.user_selection = [[0 for c in range(BOARD_ROWS)] for r in range(BOARD_COLUMNS)]
-        self.player_1 = None
-        self.player_2 = None
 
         pygame.init()
         self.clock = pygame.time.Clock()
@@ -136,21 +139,40 @@ class Game:
         self.env.reset()
         self.render()
         while not self.done:
+            p1_board = self.player_1.get_board()[::-1]
+            p2_board = self.player_2.get_board()
+
+            for row in p2_board:
+                print(row)
+            print('\n')
+            for row in p1_board:
+                print(row)
+            print("-----------------------------------------------------------------------------------------")
+
             if G.new_input:
                 user_input = G.get_input()
                 if user_input == 'stop':
                     self.done = True
 
             if self.env.turn % 2 == 0:
-                if self.p1_type == 'user':
+                if self.p1_type == USER:
                     self.user_input()
-                if self.p1_type == 'minmax':
-                    self.minmax_move(self.player_1, self.player_2)
+                else:
+                    action, reward = self.env.p1_bot.get_best_move(self.player_1, self.player_2)
+                    observation, current_reward, self.done, info = self.env.step(action)
+                    print('[', self.env.turn,
+                          "]\n", self.player_1.player_id, "(", self.player_1.hp, ") Played:", action, "evaluation:",
+                          str(round(reward, 2)), "threatening", len(self.player_1.threatened_attacks), "attacks.")
             else:
-                if self.p2_type == 'user':
+                if self.p2_type == USER:
                     self.user_input()
-                if self.p2_type == 'minmax':
-                    self.minmax_move(self.player_2, self.player_1)
+                else:
+                    action, reward = self.env.p2_bot.get_best_move(self.player_2, self.player_1)
+                    observation, current_reward, self.done, info = self.env.step(action)
+                    print('[', self.env.turn,
+                          "]\n", self.player_2.player_id, "(", self.player_2.hp, ") Played:", action, "evaluation:",
+                          str(round(reward, 2)), "threatening", len(self.player_2.threatened_attacks), "attacks.")
+
             self.render()
             pygame.display.update()
             self.clock.tick(60)
@@ -183,30 +205,42 @@ class Game:
                             p1.placepiece(element[1], element[2], element[0])
                 else:
                     args = user_input.split()
-                    p1, p2 = None, None
                     if args[0] == 'test':
-                        halt = False
                         if args[1] == '1':
-                            p1, p2 = self.env.stored_game.getPlayers(viewed_turn)
+                            if self.env.p1_bot is None:
+                                bot = self.env.default_bot
+                            else:
+                                bot = self.env.p1_bot
+                            if len(args) == 5:
+                                vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1]]
+                                reward = bot.evaluate_move(self.player_1, self.player_2, vrc)
+                                print("estimated reward:", reward)
+                            elif len(args) == 8:
+                                vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1],
+                                       [int(args[5]), int(args[6]) - 1, int(args[7]) - 1]]
+                                reward = bot.evaluate_move(self.player_1, self.player_2, vrc)
+                                print("estimated reward:", reward)
+                            else:
+                                print("Wrong number of total arguments, expected 4 or 7")
+
                         elif args[1] == '2':
-                            p2, p1 = self.env.stored_game.getPlayers(viewed_turn)
+                            if self.env.p2_bot is None:
+                                bot = self.env.default_bot
+                            else:
+                                bot = self.env.p2_bot
+                            if len(args) == 5:
+                                vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1]]
+                                reward = bot.evaluate_move(self.player_2, self.player_1, vrc)
+                                print("estimated reward:", reward)
+                            elif len(args) == 8:
+                                vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1],
+                                       [int(args[5]), int(args[6]) - 1, int(args[7]) - 1]]
+                                reward = bot.evaluate_move(self.player_2, self.player_1, vrc)
+                                print("estimated reward:", reward)
+                            else:
+                                print("Wrong number of total arguments, expected 4 or 7")
                         else:
                             print("Selected wrong player, options are 1 and 2")
-                            halt = True
-
-                        if len(args) == 5 and not halt:
-                            minmax = MinMax(p1, p2, 1)
-                            vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1]]
-                            reward, expected_moves = minmax.evaluateMove(vrc)
-                            print("estimated reward:", reward)
-                        elif len(args) == 8 and not halt:
-                            minmax = MinMax(p1, p2, 1)
-                            vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1],
-                                   [int(args[5]), int(args[6]) - 1, int(args[7]) - 1]]
-                            reward, expected_moves = minmax.evaluateMove(vrc)
-                            print("estimated reward:", reward)
-                        elif not halt:
-                            print("Wrong number of total arguments, expected 4 or 7")
                     else:
                         print("Input incorrect, received:", user_input)
 
@@ -239,18 +273,6 @@ class Game:
         self.env.close()
         pygame.quit()
 
-    def minmax_move(self, player, opponent):
-        expected_reward, action, action_list = self.env.start_minmax(player, opponent)
-        print(expected_reward, action, action_list)
-        observation, current_reward, self.done, info = self.env.step(action)
-        print('[', self.env.turn,
-              "]")
-        print(player.player_id, "(", player.hp, ") Played:", action, "from", action_list, "evaluation:",
-              str(round(expected_reward, 2)), "threatening", len(player.threatened_attacks), "attacks.")
-        print(player.threatened_attacks)
-        for row in player.get_board():
-            print(row)
-
     def user_input(self):
         responded = False
         while not responded:
@@ -260,9 +282,8 @@ class Game:
                     mouse_position = pygame.mouse.get_pos()
 
                     if self.confirm:
-                        if CONFIRM_X_OFFSET <= mouse_position[
-                            0] <= CONFIRM_X_OFFSET + CONFIRM_WIDTH and CONFIRM_Y_OFFSET <= mouse_position[
-                                1] <= CONFIRM_Y_OFFSET + CONFIRM_HEIGHT:
+                        if CONFIRM_X_OFFSET <= mouse_position[0] <= CONFIRM_X_OFFSET + CONFIRM_WIDTH \
+                                and CONFIRM_Y_OFFSET <= mouse_position[1] <= CONFIRM_Y_OFFSET + CONFIRM_HEIGHT:
                             self.__confirm_selection()
                             responded = True
 
@@ -302,8 +323,8 @@ class Game:
         mouse_location = pygame.mouse.get_pos()
 
         if self.env.turn % 2 == 0:
-            row, column = mouseposition_to_rowcolumn(mouse_location[0], mouse_location[1]-DEFENDER_BOARD_OFFSET)
-            if self.p1_type == 'user':
+            row, column = mouseposition_to_rowcolumn(mouse_location[0], mouse_location[1] - DEFENDER_BOARD_OFFSET)
+            if self.p1_type == USER:
                 for r in range(BOARD_ROWS):
                     for c in range(BOARD_COLUMNS):
                         if self.user_selection[r][c] != 0:
@@ -312,7 +333,7 @@ class Game:
                             p1_board[r][c] = min(2, p1_board[r][c] + 1)
         else:
             row, column = mouseposition_to_rowcolumn(mouse_location[0], mouse_location[1])
-            if self.p2_type == 'user':
+            if self.p2_type == USER:
                 for r in range(BOARD_ROWS):
                     for c in range(BOARD_COLUMNS):
                         if self.user_selection[r][c] != 0:
@@ -367,7 +388,7 @@ G.lock = Lock()
 
 
 def run():
-    game = Game()
+    game = Game(MARK_MINIMAX_1, MARK_MINIMAX_2)
     game.start()
 
 

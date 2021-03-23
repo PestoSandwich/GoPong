@@ -22,7 +22,6 @@ class Bot(abc.ABC):
         pass
 
     # By default, bots do not store data and can be passed without copying. If your bot doesnt, update get_clone
-    @abc.abstractmethod
     def get_clone(self):
         return self
 
@@ -32,7 +31,8 @@ class Bot(abc.ABC):
     def get_best_move(self, active_player, opponent):
         best_reward = None
         best_action = None
-        return best_action, best_reward
+        action_branch = None
+        return best_action, best_reward, action_branch
 
     # Simpler method requesting your bot to evaluate the current position. You can use the player.getRating() method
     # for this the player.get_rating() method will make calls to your bot for evaluation. namely: rate_cell() and
@@ -40,7 +40,8 @@ class Bot(abc.ABC):
     @abc.abstractmethod
     def evaluate_position(self, active_player, opponent):
         best_reward = None
-        return best_reward
+        action_branch = None
+        return best_reward, action_branch
 
     # evaluate position after the requested move has been made. You likely do not need to incorporate this method as the
     # current implementation will work in most circumstances. But you have the option ^^
@@ -53,8 +54,9 @@ class Bot(abc.ABC):
 
     # the rating of a player is depending on his hitpoints and the pieces on the board. Here you can modify their
     # relationship
-    def rate_game_position(self, active_board_rating, active_hitpoints, opponent_board_rating, opponent_hitpoints):
-        return (active_hitpoints * HITPOINTS + active_board_rating) - (opponent_hitpoints * HITPOINTS + opponent_board_rating)
+    def rate_game_position(self, active_board_rating, active_hp, opponent_board_rating, opponent_hp):
+        return (active_hp * HITPOINTS + active_board_rating) - (opponent_hp * HITPOINTS +
+                                                                opponent_board_rating)
 
     # The __board_rating of the player which is given to 'get_combined_rating() is updated every time a cell is
     # modified. the rate-cell is called twice. To subtract the old value of the players board rating and then add the

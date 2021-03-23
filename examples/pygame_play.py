@@ -1,11 +1,11 @@
 import pygame
+import datetime
 from pygame import freetype
 from game import GymGame
 import numpy as np
 import helperfunctions as hf
 from threading import Thread, Lock
 from settings import *
-from bots.mark_minimax.markminimax import MarkMiniMax
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -59,6 +59,9 @@ class CommandLineInput:
 
 class Game:
     def __init__(self, p1_type, p2_type):
+        self.player_1_time = None
+        self.player_2_time = None
+        self.datetime = 0
         self.confirm = False
         self.reset = False
         self.selected = 0
@@ -88,7 +91,7 @@ class Game:
     def __make_selection(self, r, c):
         if self.user_selection[r][c] < 2:
             if self.env.turn % 2 == 0:
-                if self.player_1.check_cell(1, BOARD_ROWS - 1 - r, c):
+                if self.player_1.is_cell_value(1, BOARD_ROWS - 1 - r, c):
                     if self.selected == 0:
                         self.user_selection[r][c] = 2
                         self.selected = 2
@@ -96,7 +99,7 @@ class Game:
                     self.user_selection[r][c] += 1
                     self.selected += 1
             else:
-                if self.player_2.check_cell(1, r, c):
+                if self.player_2.is_cell_value(1, r, c):
                     if self.selected == 0:
                         self.user_selection[r][c] = 2
                         self.selected = 2
@@ -139,6 +142,7 @@ class Game:
         self.env.reset()
         self.render()
         while not self.done:
+
             p1_board = self.player_1.get_board()[::-1]
             p2_board = self.player_2.get_board()
 
@@ -154,24 +158,33 @@ class Game:
                 if user_input == 'stop':
                     self.done = True
 
+            self.datetime = datetime.datetime.now()
             if self.env.turn % 2 == 0:
                 if self.p1_type == USER:
                     self.user_input()
                 else:
-                    action, reward = self.env.p1_bot.get_best_move(self.player_1, self.player_2)
+                    action, reward, action_branch = self.env.p1_bot.get_best_move(self.player_1, self.player_2)
                     observation, current_reward, self.done, info = self.env.step(action)
                     print('[', self.env.turn,
                           "]\n", self.player_1.player_id, "(", self.player_1.hp, ") Played:", action, "evaluation:",
-                          str(round(reward, 2)), "threatening", len(self.player_1.threatened_attacks), "attacks.")
+                          str(round(reward, 2)), "threatening", len(self.player_1.threatened_attacks), "attacks.", action_branch)
+                if self.player_1_time is None:
+                    self.player_1_time = (datetime.datetime.now() - self.datetime)
+                else:
+                    self.player_1_time += (datetime.datetime.now() - self.datetime)
             else:
                 if self.p2_type == USER:
                     self.user_input()
                 else:
-                    action, reward = self.env.p2_bot.get_best_move(self.player_2, self.player_1)
+                    action, reward, action_branch = self.env.p2_bot.get_best_move(self.player_2, self.player_1)
                     observation, current_reward, self.done, info = self.env.step(action)
                     print('[', self.env.turn,
                           "]\n", self.player_2.player_id, "(", self.player_2.hp, ") Played:", action, "evaluation:",
-                          str(round(reward, 2)), "threatening", len(self.player_2.threatened_attacks), "attacks.")
+                          str(round(reward, 2)), "threatening", len(self.player_2.threatened_attacks), "attacks.", action_branch)
+                if self.player_2_time is None:
+                    self.player_2_time = (datetime.datetime.now() - self.datetime)
+                else:
+                    self.player_2_time += (datetime.datetime.now() - self.datetime)
 
             self.render()
             pygame.display.update()
@@ -181,10 +194,10 @@ class Game:
         self.stage = 'review'
 
     def review(self):
-        max_turns = self.env.__stored_game.turns
+        max_turns = self.env.get_saved_game().turns
         viewed_turn = self.env.turn
         while not self.done:
-            self.player_1, self.player_2 = self.env.__stored_game.get_players(viewed_turn)
+            self.player_1, self.player_2 = self.env.get_saved_game().get_players(viewed_turn)
             self.render()
 
             if G.new_input:
@@ -207,36 +220,30 @@ class Game:
                     args = user_input.split()
                     if args[0] == 'test':
                         if args[1] == '1':
-                            if self.env.p1_bot is None:
-                                bot = self.env.default_bot
-                            else:
-                                bot = self.env.p1_bot
+                            bot = self.env.p1_bot
                             if len(args) == 5:
                                 vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1]]
-                                reward = bot.evaluate_move(self.player_1, self.player_2, vrc)
-                                print("estimated reward:", reward)
+                                reward, action_branch = bot.evaluate_move(self.player_1, self.player_2, vrc)
+                                print("estimated reward:", reward, action_branch)
                             elif len(args) == 8:
                                 vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1],
                                        [int(args[5]), int(args[6]) - 1, int(args[7]) - 1]]
-                                reward = bot.evaluate_move(self.player_1, self.player_2, vrc)
-                                print("estimated reward:", reward)
+                                reward, action_branch = bot.evaluate_move(self.player_1, self.player_2, vrc)
+                                print("estimated reward:", reward, action_branch)
                             else:
                                 print("Wrong number of total arguments, expected 4 or 7")
 
                         elif args[1] == '2':
-                            if self.env.p2_bot is None:
-                                bot = self.env.default_bot
-                            else:
-                                bot = self.env.p2_bot
+                            bot = self.env.p2_bot
                             if len(args) == 5:
                                 vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1]]
-                                reward = bot.evaluate_move(self.player_2, self.player_1, vrc)
-                                print("estimated reward:", reward)
+                                reward, action_branch = bot.evaluate_move(self.player_2, self.player_1, vrc)
+                                print("estimated reward:", reward, action_branch)
                             elif len(args) == 8:
                                 vrc = [[int(args[2]), int(args[3]) - 1, int(args[4]) - 1],
                                        [int(args[5]), int(args[6]) - 1, int(args[7]) - 1]]
-                                reward = bot.evaluate_move(self.player_2, self.player_1, vrc)
-                                print("estimated reward:", reward)
+                                reward, action_branch = bot.evaluate_move(self.player_2, self.player_1, vrc)
+                                print("estimated reward:", reward, action_branch)
                             else:
                                 print("Wrong number of total arguments, expected 4 or 7")
                         else:
@@ -346,11 +353,16 @@ class Game:
         self.draw_grid(p2_board, 0, 0, LIGHT_GREY, 1)
         self.draw_grid(p1_board, DEFENDER_BOARD_OFFSET, 0, DARK_GREY, 2)
 
-        self.GAME_FONT.render_to(self.display, (BOX_MARGIN + 7 * (BOX_MARGIN + BOX_WIDTH), BOX_MARGIN),
-                                 "hitpoints: " + str(self.env.p2.hp), WHITE)
+        self.GAME_FONT.render_to(self.display, (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), BOX_MARGIN),
+                                 "hitpoints: " + str(self.player_2.hp), WHITE)
+        self.GAME_FONT.render_to(self.display, (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), BOX_MARGIN + 40),
+                                 "time spend: " + str(self.player_2_time), WHITE)
         self.GAME_FONT.render_to(self.display,
-                                 (BOX_MARGIN + 7 * (BOX_MARGIN + BOX_WIDTH), DEFENDER_BOARD_OFFSET + BOX_MARGIN),
-                                 "hitpoints: " + str(self.env.p1.hp), WHITE)
+                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), DEFENDER_BOARD_OFFSET + BOX_MARGIN),
+                                 "hitpoints: " + str(self.player_1.hp), WHITE)
+        self.GAME_FONT.render_to(self.display,
+                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), DEFENDER_BOARD_OFFSET + BOX_MARGIN + 40),
+                                 "time spend: " + str(self.player_1_time), WHITE)
 
         if self.reset:
             reset = pygame.Rect(RESET_X_OFFSET, RESET_Y_OFFSET, RESET_WIDTH, RESET_HEIGHT)
@@ -388,7 +400,7 @@ G.lock = Lock()
 
 
 def run():
-    game = Game(MARK_MINIMAX_1, MARK_MINIMAX_2)
+    game = Game(USER, USER)
     game.start()
 
 

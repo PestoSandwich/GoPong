@@ -1,5 +1,4 @@
 from settings import *
-from formations import *
 import helperfunctions as hf
 
 
@@ -35,7 +34,7 @@ class Player:
     # get_rating calls the bot method which determines the rating from the pre_calculated rating of both boards and
     # the \ player's hp TODO different bots will result in different board_ratings. Can't compare these to each other
     def get_rating(self, opponent):
-        return self.bot.rate_game_position(self.__board_rating, opponent.__board_rating, self.hp, opponent.hp)
+        return self.bot.rate_game_position(self.__board_rating, self.hp, opponent.__board_rating, opponent.hp)
 
     # make call to the bot's rate_cell method
     def __rate_cell(self, r, c):
@@ -83,7 +82,6 @@ class Player:
             # update the total number of active pieces
             self.num_active += 1
         # if an active piece is placed, complete formations and attack should be checked after place_piece is called.
-
         elif value != 2 and old_cell_value == 2:
             # update the total number of active pieces
             self.num_active -= 1
@@ -121,41 +119,44 @@ class Player:
     def attack(self, column, amount):
         for x in range(amount):
             defended = False
+            target = BOARD_ROWS
             for i in range(BOARD_ROWS):
-                target = BOARD_ROWS - 1 - i
+                target -= 1
                 if self.__grid[target][column] > 0:
                     self.__hit(target, column)
                     defended = True
-                    break
             if not defended:
                 self.hp -= 1
 
     # first check if the cell is both within the boundaries of the board
     # then check if the cell has the required values
-    def check_cell(self, value, row, column):
+    def is_cell_value(self, value, row, column):
         if self.cell_exists(row, column):
-            if self.cell_value(value, row, column):
+            if self.__grid[row][column] == value:
+                return True
+        return False
+
+    def is_cell_valid(self, value, row, column):
+        if self.cell_exists(row, column):
+            if self.__grid[row][column] < value:
                 return True
         return False
 
     def cell_exists(self, row, column):
         return 0 <= row < BOARD_ROWS and 0 <= column < BOARD_COLUMNS
 
-    def cell_value(self, value, row, column):
-        return value == self.__grid[row][column]
-
     # code which both checks if a complete formation is formed, and adds near complete formations to the
-    # theatened_attacks set
+    # threatened_attacks set
     def check_formation(self, row, column):
         found_formation = False
         complete_formation = None
         found_attacks = []
         if self.num_active > 1:
-            for formation in all_formations():
+            for formation in FORMATIONS:
                 missing_pieces = []
                 number_missing = 0
                 for vector in formation:
-                    if not self.check_cell(2, row + vector[0], column + vector[1]):
+                    if not self.is_cell_value(2, row + vector[0], column + vector[1]):
                         missing_pieces.append([row + vector[0], column + vector[1]])
                         number_missing += 1
                 if number_missing == 0:

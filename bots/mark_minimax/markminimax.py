@@ -26,12 +26,7 @@ class MarkMiniMax(Bot, abc.ABC):
         minimax = MiniMax(self.search_depth)
         minimax.initialize()
         checked_action_reward, checked_action_list = minimax.evaluate_move(active_player, opponent, vrc)
-        return checked_action_reward
-
-    def get_clone(self):
-        minimax = MarkMiniMax()
-        minimax.search_depth = self.search_depth
-        return minimax
+        return checked_action_reward, checked_action_list
 
     def get_best_move(self, active_player, opponent):
         minimax = MiniMax(self.search_depth)
@@ -39,15 +34,15 @@ class MarkMiniMax(Bot, abc.ABC):
         checked_action_reward, checked_action_list = minimax.minimax(active_player, opponent, 0, -2000, -2000)
 
         if len(checked_action_list) > 0:
-            return checked_action_list[-1], checked_action_reward
+            return checked_action_list[-1], checked_action_reward, checked_action_list
         else:
-            return 0, checked_action_reward
+            return 0, checked_action_reward, checked_action_list
 
     def evaluate_position(self, active_player, opponent):
         minimax = MiniMax(self.search_depth)
         minimax.initialize()
         checked_action_reward, checked_action_list = minimax.minimax(active_player, opponent, 0, -2000, -2000)
-        return checked_action_reward
+        return checked_action_reward, checked_action_list
 
     # DO NOT MODIFY THE GIVEN GRID, FOR PERFORMANCE REASONS THE GRID IS NOT A COPY
     def rate_cell(self, r, c, grid):
@@ -75,6 +70,7 @@ class MarkMiniMax(Bot, abc.ABC):
                     rating += INACTIVE_HIDING_PENALTY
         return rating
 
+
 # TODO minimax at search depth 1 will not end the game. 3500 moves and counting with both players at 1 hp.
 class MiniMax:
     def __init__(self, max_depth):
@@ -91,6 +87,11 @@ class MiniMax:
 
     def initialize(self):
         self.populate_prunelist()
+
+    def get_clone(self):
+        minimax = MiniMax(self.max_depth)
+        minimax.prune_set = self.prune_set
+        return minimax
 
     def minimax(self, player_1, player_2, current_depth, alpha, beta):
         self.player_1 = player_1
@@ -164,7 +165,7 @@ class MiniMax:
 
         # Check if the action is valid
         for element in vrc:
-            if not (self.player_1.isvalid(element[0], element[1], element[2])):
+            if not (self.player_1.is_cell_valid(element[0], element[1], element[2])):
                 return False, None
 
             if element[0] == 1:
@@ -183,7 +184,7 @@ class MiniMax:
         p1_clone.execute_vrc(p2_clone, vrc)
 
         if p2_clone.hp <= 0:
-            return VICTORY + self.player_1.get_rating() - self.player_2.get_rating(), []
+            return VICTORY + self.player_1.get_rating(self.player_2), []
 
         if (len(p2_clone.threatened_attacks) > 0 or self.current_depth < self.max_depth) and \
                 self.current_depth < self.max_depth + 1:
@@ -193,7 +194,7 @@ class MiniMax:
                                                                              self.alpha, self.beta)
             checked_action_reward *= -1
         else:
-            checked_action_reward = p1_clone.get_rating() - p2_clone.get_rating()
+            checked_action_reward = p1_clone.get_rating(p2_clone)
             checked_action_list = []
         # Determine new board reward
 
@@ -227,3 +228,5 @@ class MiniMax:
 
             if self.best_reward > self.beta:
                 self.beta = self.best_reward
+
+        return False

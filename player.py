@@ -14,114 +14,139 @@ class Player:
         self.player_id = player_id
         self.threatened_attacks = []
 
+    # Take unnecessary calculations away from def_init. Player.initialize() is called by the host Gym. Newly created
+    # players outside of the GymGame should use old_player.get_copy() instead of creating a new player.
     def initialize(self):
-        # Take unnecessary calculations away from def_init, Player.initialize() is called by the host Gym
         self.__grid = [[0 for x in range(BOARD_COLUMNS)] for y in range(BOARD_ROWS)]
         self.action_shape = (BOARD_COLUMNS * BOARD_ROWS) * (
                 BOARD_COLUMNS * BOARD_ROWS) + BOARD_COLUMNS * BOARD_ROWS
 
+    # new player objects should be made as copy's of existing player objects.
     def get_copy(self):
-        clone = Player(self.player_id + 1, self.bot)
+        clone = Player(self.player_id + 1, self.bot.get_clone())
         clone.action_shape = self.action_shape
-        clone.setCopyBoard(self.__grid)
+        clone.set_board_as_copy(self.__grid)
         clone.num_active = self.num_active
         clone.hp = self.hp
         clone.__board_rating = self.__board_rating
         clone.threatened_attacks = [[*attack] for attack in self.threatened_attacks]
         return clone
 
-    def get_rating(self):
-        return self.bot.get_combined_rating(self.__board_rating, self.hp)
+    # get_rating calls the bot method which determines the rating from the pre_calculated rating of both boards and
+    # the \ player's hp TODO different bots will result in different board_ratings. Can't compare these to each other
+    def get_rating(self, opponent):
+        return self.bot.rate_game_position(self.__board_rating, opponent.__board_rating, self.hp, opponent.hp)
 
-    def isvalid(self, value, r, c):
-        if self.__grid[r][c] < value:
-            return True
-        return False
-
+    # make call to the bot's rate_cell method
     def __rate_cell(self, r, c):
         return self.bot.rate_cell(r, c, self.__grid)
 
-    def reset(self, grid, hp):
-        self.setCustomBoard(grid)
-        self.hp = hp
+    # reset all non-constant values to their initial position (grid and hp
+    def reset(self, initial_grid, initial_hp):
+        self.set_custom_board(initial_grid)
+        self.hp = initial_hp
 
-    def setCustomBoard(self, grid):
+    # Copy a board and calculate the board rating. This is used at the start of the game by the gym method and should
+    # not be used by bots as it is quite slow
+    def set_custom_board(self, grid):
         self.__grid = [[0 for x in range(BOARD_COLUMNS)] for y in range(BOARD_ROWS)]
         self.num_active = 0
         self.threatened_attacks = []
         for r in range(BOARD_ROWS):
             for c in range(BOARD_COLUMNS):
                 if grid[r][c] > 0:
-                    self.placepiece(r,c,grid[r][c])
+                    self.__place_piece(grid[r][c], r, c)
 
+    # getter for the players board which makes a copy to avoid accidentally changing the original values
     def get_board(self):
         return [[*row] for row in self.__grid]
 
-    def setCopyBoard(self, grid):
+    # sets board as copy of a board.
+    def set_board_as_copy(self, grid):
         self.__grid = [[*row] for row in grid]
 
-    def placepiece(self, row, column, value):
+    # place piece method which must be called to update values of cells. place_piece keeps self.__board_rating up
+    # to date.
+    def __place_piece(self, value, row, column):
+        old_cell_value = self.__grid[row][column]
+        # rate selected cell
         prev_rating = self.__rate_cell(row, column)
         if row > 0:
+            # rate cells whose rating depends on selected cell
             prev_rating += self.__rate_cell(row - 1, column)
 
+        # modify selected cell
         self.__grid[row][column] = value
-        if value == 2:
+
+        # check an active piece is placed or removed
+        if value == 2 and old_cell_value != 2:
+            # update the total number of active pieces
             self.num_active += 1
+        # if an active piece is placed, complete formations and attack should be checked after place_piece is called.
 
-        new_rating = self.__rate_cell(row, column)
-        if row > 0:
-            new_rating += self.__rate_cell(row - 1, column)
-
-        self.__board_rating += (new_rating - prev_rating)
-
-    def __damage_piece(self, row, column, value):
-        if self.__grid[row][column] == 2:
+        elif value != 2 and old_cell_value == 2:
+            # update the total number of active pieces
             self.num_active -= 1
-            removelist= []
+            # if an active piece is removed, remove all near_complete formations which the active piece was a part of
+            remove_list = []
             for attack in self.threatened_attacks:
                 for vector in attack[1]:
                     if vector[0] == row and vector[1] == column:
-                        removelist.append(attack)
-            self.threatened_attacks = [item for item in self.threatened_attacks if item not in removelist]
-            if value == 2:
-                self.placepiece(row, column, 0)
-            else:
-                self.placepiece(row, column, 1)
-        else:
-            self.placepiece(row, column, 0)
+                        remove_list.append(attack)
+            self.threatened_attacks = [item for item in self.threatened_attacks if item not in remove_list]
+
+        # rate selected cell after modification
+        new_rating = self.__rate_cell(row, column)
+        if row > 0:
+            # rate cells whose rating depends on selected cell after modification
+            new_rating += self.__rate_cell(row - 1, column)
+
+        # update board rating with the new rating of the modified cells
+        self.__board_rating += (new_rating - prev_rating)
+
+    # damage_piece is called when an attack hits a piece.
+    def __hit(self, target, column):
+        # Subtract 2 from the value of the damages piece (always resulting in 0)
+        self.__place_piece(max(0, self.__grid[target][column] - 2), target, column)
+        if target - 1 >= 0:
+            # If there is a cell located after the target, subtract 1 from the value of that cell
+            self.__place_piece(max(0, self.__grid[target - 1][column] - 1), target, column)
 
     def __deactivate(self, row, column):
-        self.placepiece(row, column, 1)
-        self.num_active -= 1
-        removelist = []
-        for attack in self.threatened_attacks:
-            for vector in attack[1]:
-                if vector[0] == row and vector[1] == column:
-                    removelist.append(attack)
-        self.threatened_attacks = [item for item in self.threatened_attacks if item not in removelist]
+        self.__place_piece(1, row, column)
 
+    # send 'amount' of bullets over a single column. Checking cells from high row numbers to low row numbers.
+    # if a bullet encounters a non 0 cell, it will __hit() the cell and the bullet is defended.
+    # if a bullet passes the last row without being defended, the players hp is reduced by 1
     def attack(self, column, amount):
         for x in range(amount):
             defended = False
             for i in range(BOARD_ROWS):
                 target = BOARD_ROWS - 1 - i
                 if self.__grid[target][column] > 0:
-                    self.__damage_piece(target, column, 2)
-                    if target - 1 >= 0:
-                        self.__damage_piece(target - 1, column, 1)
+                    self.__hit(target, column)
                     defended = True
                     break
             if not defended:
                 self.hp -= 1
 
+    # first check if the cell is both within the boundaries of the board
+    # then check if the cell has the required values
     def check_cell(self, value, row, column):
-        if 0 <= row < BOARD_ROWS and 0 <= column < BOARD_COLUMNS:
-            if value == self.__grid[row][column]:
+        if self.cell_exists(row, column):
+            if self.cell_value(value, row, column):
                 return True
         return False
 
-    def checkformation(self, row, column):
+    def cell_exists(self, row, column):
+        return 0 <= row < BOARD_ROWS and 0 <= column < BOARD_COLUMNS
+
+    def cell_value(self, value, row, column):
+        return value == self.__grid[row][column]
+
+    # code which both checks if a complete formation is formed, and adds near complete formations to the
+    # theatened_attacks set
+    def check_formation(self, row, column):
         found_formation = False
         complete_formation = None
         found_attacks = []
@@ -147,6 +172,9 @@ class Player:
             self.threatened_attacks.extend(found_attacks)
         return complete_formation
 
+    # all calls to modify a player's board outside of the player class should be made through the execute methods.
+    # actions [ 0 - board-positions] -> active pieces
+    # actions [ board_positions - board_positions*board_positions ] -> sets of two inactive pieces
     def execute_action(self, p2, action):
         self.execute_vrc(p2, hf.action_to_vrc(action))
 
@@ -154,11 +182,11 @@ class Player:
     def execute_vrc(self, p2, vrc):
         for element in vrc:
             value, row, column = element[0], element[1], element[2]
-            self.placepiece(row, column, value)
+            self.__place_piece(value, row, column)
 
-            # Check if the just placed active piece created valid formations
-            if (value == 2):
-                formation = self.checkformation(row, column)
+            # Check if the just placed active piece created valid formations and if so, attack
+            if value == 2:
+                formation = self.check_formation(row, column)
                 if formation is not None:
                     p2.attack(column, len(formation))
                     for vector in formation:

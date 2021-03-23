@@ -46,14 +46,21 @@ def action_to_array(self, action):
     return row, column
 
 
+# this is used to convert the players hp into a list which can be extended onto the board representation for the
+# observation
 def decimal_to_array(n):
+    # 3 is added so that we only store positive integers
     n = n + 3
     if n == 0:
-        return [0]
-    nums = []
-    while n:
-        n, r = divmod(n, 3)
-        nums.append(r)
-    for i in range(3-len(nums)):
+        nums = [0]
+    else:
+        nums = []
+        while n:
+            n, r = divmod(n, 3)
+            nums.append(r)
+
+    # add zero's until the list is of length 3
+    for i in range(3 - len(nums)):
         nums.append(0)
+
     return nums

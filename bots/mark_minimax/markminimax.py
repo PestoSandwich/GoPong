@@ -49,9 +49,6 @@ class MarkMiniMax(Bot, abc.ABC):
         checked_action_reward, checked_action_list = minimax.minimax(active_player, opponent, 0, -2000, -2000)
         return checked_action_reward
 
-    def get_combined_rating(self, board_rating, current_hitpoints):
-        return board_rating + current_hitpoints * HITPOINTS
-
     # DO NOT MODIFY THE GIVEN GRID, FOR PERFORMANCE REASONS THE GRID IS NOT A COPY
     def rate_cell(self, r, c, grid):
         rating = 0
@@ -78,7 +75,7 @@ class MarkMiniMax(Bot, abc.ABC):
                     rating += INACTIVE_HIDING_PENALTY
         return rating
 
-
+# TODO minimax at search depth 1 will not end the game. 3500 moves and counting with both players at 1 hp.
 class MiniMax:
     def __init__(self, max_depth):
         self.max_depth = max_depth

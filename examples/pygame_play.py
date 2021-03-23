@@ -181,10 +181,10 @@ class Game:
         self.stage = 'review'
 
     def review(self):
-        max_turns = self.env.stored_game.turns
+        max_turns = self.env.__stored_game.turns
         viewed_turn = self.env.turn
         while not self.done:
-            self.player_1, self.player_2 = self.env.stored_game.getPlayers(viewed_turn)
+            self.player_1, self.player_2 = self.env.__stored_game.get_players(viewed_turn)
             self.render()
 
             if G.new_input:
@@ -202,7 +202,7 @@ class Game:
                     for action in p1.prune_set:
                         vrc = hf.action_to_vrc(action)
                         for element in vrc:
-                            p1.placepiece(element[1], element[2], element[0])
+                            p1.__place_piece(element[1], element[2], element[0])
                 else:
                     args = user_input.split()
                     if args[0] == 'test':
@@ -388,7 +388,7 @@ G.lock = Lock()
 
 
 def run():
-    game = Game(USER, MARK_MINIMAX_2)
+    game = Game(MARK_MINIMAX_1, MARK_MINIMAX_2)
     game.start()
 
 

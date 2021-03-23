@@ -53,8 +53,8 @@ class Bot(abc.ABC):
 
     # the rating of a player is depending on his hitpoints and the pieces on the board. Here you can modify their
     # relationship
-    def get_combined_rating(self, board_rating, current_hitpoints):
-        return board_rating + current_hitpoints * HITPOINTS
+    def rate_game_position(self, active_board_rating, active_hitpoints, opponent_board_rating, opponent_hitpoints):
+        return (active_hitpoints * HITPOINTS + active_board_rating) - (opponent_hitpoints * HITPOINTS + opponent_board_rating)
 
     # The __board_rating of the player which is given to 'get_combined_rating() is updated every time a cell is
     # modified. the rate-cell is called twice. To subtract the old value of the players board rating and then add the

@@ -400,7 +400,7 @@ G.lock = Lock()
 
 
 def run():
-    game = Game(USER, USER)
+    game = Game(MARK_MINIMAX_2, MARK_MINIMAX_2)
     game.start()
 
 

@@ -1,8 +1,10 @@
 from bot import Bot
 import abc
 from settings import *
+import game
 import numpy as np
 import helperfunctions as hf
+import transpositions as tp
 
 BASE_ACTIVE = 1
 BASE_INACTIVE = 0.25
@@ -21,27 +23,31 @@ class MarkMiniMax(Bot, abc.ABC):
     def __init__(self):
         super().__init__()
         self.search_depth = SEARCHDEPTH
+        self.transpositions = tp.Transpositions()
 
     def evaluate_move(self, active_player, opponent, vrc):
-        minimax = MiniMax(self.search_depth)
+        minimax = MiniMax(self.search_depth, self.transpositions)
         minimax.initialize()
         checked_action_reward, checked_action_list = minimax.evaluate_move(active_player, opponent, vrc)
+        self.transpositions.store_to_file()
         return checked_action_reward, checked_action_list
 
     def get_best_move(self, active_player, opponent):
-        minimax = MiniMax(self.search_depth)
+        minimax = MiniMax(self.search_depth, self.transpositions)
         minimax.initialize()
         checked_action_reward, checked_action_list = minimax.minimax(active_player, opponent, 0, -2000, -2000)
 
+        self.transpositions.store_to_file()
         if len(checked_action_list) > 0:
             return checked_action_list[-1], checked_action_reward, checked_action_list
         else:
             return 0, checked_action_reward, checked_action_list
 
     def evaluate_position(self, active_player, opponent):
-        minimax = MiniMax(self.search_depth)
+        minimax = MiniMax(self.search_depth, self.transpositions)
         minimax.initialize()
         checked_action_reward, checked_action_list = minimax.minimax(active_player, opponent, 0, -2000, -2000)
+        self.transpositions.store_to_file()
         return checked_action_reward, checked_action_list
 
     # DO NOT MODIFY THE GIVEN GRID, FOR PERFORMANCE REASONS THE GRID IS NOT A COPY
@@ -73,7 +79,7 @@ class MarkMiniMax(Bot, abc.ABC):
 
 # TODO minimax at search depth 1 will not end the game. 3500 moves and counting with both players at 1 hp.
 class MiniMax:
-    def __init__(self, max_depth):
+    def __init__(self, max_depth, transpositions):
         self.max_depth = max_depth
         self.current_depth = 0
         self.player_1 = None
@@ -84,13 +90,15 @@ class MiniMax:
         self.best_action_list = []
         self.type = None
         self.prune_set = set()
+        self.transpositions = transpositions
 
     def initialize(self):
         self.populate_prunelist()
 
     def get_clone(self):
-        minimax = MiniMax(self.max_depth)
+        minimax = MiniMax(self.max_depth, self.transpositions)
         minimax.prune_set = self.prune_set
+        minimax.transpositions = self.transpositions
         return minimax
 
     def minimax(self, player_1, player_2, current_depth, alpha, beta):
@@ -99,6 +107,13 @@ class MiniMax:
         self.alpha = alpha
         self.beta = beta
         self.current_depth = current_depth
+        observation = game.get_observation(self.player_1, self.player_2)
+        game_hash = tp.hash_gamestate(observation)
+
+        existing_transposition = self.transpositions.get_transposition(game_hash, self.max_depth - self.current_depth)
+        if existing_transposition is not None:
+            reward, action_list = existing_transposition
+            return reward, action_list
 
         if self.current_depth % 2 == 0:
             self.type = 'max'
@@ -113,6 +128,8 @@ class MiniMax:
             checked_action_list.append(checked_action)
 
             if self.__update_variables(checked_action_reward, checked_action_list):
+                self.transpositions.store_transposition(game_hash, self.best_reward, self.best_action_list,
+                                                        self.max_depth - self.current_depth)
                 return self.best_reward, self.best_action_list
 
         if self.current_depth <= self.max_depth:
@@ -126,8 +143,12 @@ class MiniMax:
                     checked_action_list.append(checked_action)
 
                     if self.__update_variables(checked_action_reward, checked_action_list):
+                        self.transpositions.store_transposition(game_hash, self.best_reward, self.best_action_list,
+                                                                self.max_depth - self.current_depth)
                         return self.best_reward, self.best_action_list
 
+        self.transpositions.store_transposition(game_hash, self.best_reward, self.best_action_list,
+                                                  self.max_depth - self.current_depth)
         return self.best_reward, self.best_action_list
 
     def populate_prunelist(self):
@@ -188,9 +209,8 @@ class MiniMax:
 
         if (len(p2_clone.threatened_attacks) > 0 or self.current_depth < self.max_depth) and \
                 self.current_depth < self.max_depth + 1:
-            new_minimax = MiniMax(self.max_depth)
-            new_minimax.prune_set = self.prune_set
-            checked_action_reward, checked_action_list = new_minimax.minimax(p1_clone, p2_clone, self.current_depth + 1,
+            new_minimax = self.get_clone()
+            checked_action_reward, checked_action_list = new_minimax.minimax(p2_clone, p1_clone, self.current_depth + 1,
                                                                              self.alpha, self.beta)
             checked_action_reward *= -1
         else:

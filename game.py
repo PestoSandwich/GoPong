@@ -62,6 +62,7 @@ class GymGame(gym.Env, ABC):
         elif self.p2_type == MARK_MINIMAX_2:
             self.p2_bot = MarkMiniMax()
             self.p2_bot.search_depth = 2
+            self.p2_bot.search_depth = 2
         else:
             self.p2_bot = MarkMiniMax()
 

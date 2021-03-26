@@ -167,7 +167,8 @@ class Game:
                     observation, current_reward, self.done, info = self.env.step(action)
                     print('[', self.env.turn,
                           "]\n", self.player_1.player_id, "(", self.player_1.hp, ") Played:", action, "evaluation:",
-                          str(round(reward, 2)), "threatening", len(self.player_1.threatened_attacks), "attacks.", action_branch)
+                          str(round(reward, 2)), "threatening", len(self.player_1.threatened_attacks), "attacks.",
+                          action_branch)
                 if self.player_1_time is None:
                     self.player_1_time = (datetime.datetime.now() - self.datetime)
                 else:
@@ -180,7 +181,8 @@ class Game:
                     observation, current_reward, self.done, info = self.env.step(action)
                     print('[', self.env.turn,
                           "]\n", self.player_2.player_id, "(", self.player_2.hp, ") Played:", action, "evaluation:",
-                          str(round(reward, 2)), "threatening", len(self.player_2.threatened_attacks), "attacks.", action_branch)
+                          str(round(reward, 2)), "threatening", len(self.player_2.threatened_attacks), "attacks.",
+                          action_branch)
                 if self.player_2_time is None:
                     self.player_2_time = (datetime.datetime.now() - self.datetime)
                 else:
@@ -358,10 +360,12 @@ class Game:
         self.GAME_FONT.render_to(self.display, (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), BOX_MARGIN + 40),
                                  "time spend: " + str(self.player_2_time), WHITE)
         self.GAME_FONT.render_to(self.display,
-                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), DEFENDER_BOARD_OFFSET + BOX_MARGIN),
+                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH),
+                                  DEFENDER_BOARD_OFFSET + BOX_MARGIN),
                                  "hitpoints: " + str(self.player_1.hp), WHITE)
         self.GAME_FONT.render_to(self.display,
-                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH), DEFENDER_BOARD_OFFSET + BOX_MARGIN + 40),
+                                 (BOX_MARGIN + BOARD_COLUMNS * (BOX_MARGIN + BOX_WIDTH),
+                                  DEFENDER_BOARD_OFFSET + BOX_MARGIN + 40),
                                  "time spend: " + str(self.player_1_time), WHITE)
 
         if self.reset:
@@ -384,7 +388,7 @@ class Game:
                 x_coordinate = init_x + BOX_MARGIN + column * (BOX_MARGIN + BOX_WIDTH)
                 y_coordinate = init_y + BOX_MARGIN + row * (BOX_MARGIN + BOX_HEIGHT)
                 rect = pygame.Rect(x_coordinate, y_coordinate,
-                                        BOX_WIDTH, BOX_HEIGHT)
+                                   BOX_WIDTH, BOX_HEIGHT)
                 pygame.draw.rect(self.display, color, rect, 0)
                 if board[row][column] == 2:
                     if player == 1:

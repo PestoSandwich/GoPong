@@ -125,6 +125,7 @@ class Player:
                 if self.__grid[target][column] > 0:
                     self.__hit(target, column)
                     defended = True
+                    break
             if not defended:
                 self.hp -= 1
 

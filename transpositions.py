@@ -26,7 +26,6 @@ class Transpositions:
         self.trans_dict = load_transpositions()
 
     def store_to_file(self):
-        print("store to file")
         json_string = json.dumps(self.trans_dict)
         file = open(json_file, 'w')
         file.write(json_string)
@@ -54,10 +53,3 @@ class Transpositions:
     def store_transposition(self, game_hash, reward, action_list, search_depth):
         if search_depth >= min_storable_searchdepth:
             self.trans_dict[game_hash] = [reward, action_list, search_depth]
-
-
-empty_transpositions = dict()
-json_string = json.dumps(empty_transpositions)
-file = open(json_file, 'w')
-file.write(json_string)
-file.close()

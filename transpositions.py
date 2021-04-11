@@ -1,5 +1,6 @@
 import json
-from settings import *
+import os
+from settings import ROOT_DIR
 
 json_file = os.path.join(ROOT_DIR, 'transpositions.json')  # requires `import os`
 min_storable_searchdepth = 1

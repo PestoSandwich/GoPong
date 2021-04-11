@@ -1,5 +1,8 @@
 import abc
 from settings import *
+import settings as st
+from threading import Thread
+import threading as th
 
 # ----------------------------------------------------------
 # Variables the default reward algorithm uses
@@ -19,38 +22,38 @@ VICTORY = 1000
 # Abstract class Bot is extended by your AI
 class Bot(abc.ABC):
     def __init__(self):
+        self.done = False
+        self.player_id = None
+        self.active_player = None
+        self.opponent = None
+
+    # initialize steps which require heavy calculations and should not be redone when the bot is copied
+    # todo initialize is not implemented for bots
+    def initialize(self):
         pass
+
+    def update(self, reward, action, done):
+        st.INTERFACE.set_evaluation(self.player_id, reward, action)
+        st.INTERFACE.set_done(self.player_id, done)
+
+    # reset the bot values
+    def reset(self):
+        self.action_list = []
+        self.evaluation = NEGATIVE_INFINITY
+        self.done = False
 
     # By default, bots do not store data and can be passed without copying. If your bot doesnt, update get_clone
     def get_clone(self):
         return self
 
-    # This is the main method of your ai. both the active_player and opponent are pointers to the actual object.
-    # Use data stored in them to determine the best move
-    @abc.abstractmethod
-    def get_best_move(self, active_player, opponent):
-        best_reward = None
-        best_action = None
-        action_branch = None
-        return best_action, best_reward, action_branch
+    def start(self, protagonist, antagonist):
+        best_reward, action_branch = self._rate_and_play(protagonist, antagonist)
+        st.INTERFACE.set_evaluation(self.player_id, best_reward, action_branch)
+        st.INTERFACE.set_done(self.player_id, True)
 
-    # Simpler method requesting your bot to evaluate the current position. You can use the player.getRating() method
-    # for this the player.get_rating() method will make calls to your bot for evaluation. namely: rate_cell() and
-    # get_combined_rating()
     @abc.abstractmethod
-    def evaluate_position(self, active_player, opponent):
-        best_reward = None
-        action_branch = None
-        return best_reward, action_branch
-
-    # evaluate position after the requested move has been made. You likely do not need to incorporate this method as the
-    # current implementation will work in most circumstances. But you have the option ^^
-    def evaluate_move(self, active_player, opponent, vrc):
-        active_player_clone = active_player.getClone()
-        opponent_clone = opponent.getClone()
-        # vrc stores moves: [[1, row_a, column_a],[1, row_b, column_b]] in case of two inactive pieces
-        active_player_clone.execute_vrc(opponent_clone, vrc)
-        return self.evaluate_position(opponent_clone, active_player_clone)
+    def _rate_and_play(self, protagonist, antagonist):
+        return None, None
 
     # the rating of a player is depending on his hitpoints and the pieces on the board. Here you can modify their
     # relationship

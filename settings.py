@@ -1,5 +1,15 @@
 import os
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Conventions:
+
+# reward, action_list, done is always used by methods in this order. Short form 'rad'. If done is not included: 'ra'
+# value, row_index, column_index is always used in this order. Short form 'vrc'. If value is not included: 'rc'
+
+INTERFACE = None
+COMMAND_LINE_INPUT = None
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))  # This is your Project Root
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Game settings
@@ -49,3 +59,13 @@ FORMATIONS = [[[0, 0], [1, 0], [1, 1], [2, 1]],
 USER = 1001
 MARK_MINIMAX_1 = 1002
 MARK_MINIMAX_2 = 1003
+MARK_ID_2 = 1004
+MARK_ID_10 = 1005
+MARK_ID_60 = 1006
+
+# ---------------------------------------------------------------------------------------------------------------------
+# values
+
+VICTORY = 1000
+POSITIVE_INFINITY = 2000
+NEGATIVE_INFINITY = -2000

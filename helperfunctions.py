@@ -64,3 +64,12 @@ def decimal_to_array(n):
         nums.append(0)
 
     return nums
+
+def get_observation(pro, ant):
+    # flatten the boardstate of player 1 in a single list
+    p1_observation = [j for sub in pro.get_board() for j in sub]
+    p2_observation = [j for sub in ant.get_board() for j in sub]
+    # add the hitpoints of the player to the end to the list represented in ternary. '+3' is added to avoid negative hp
+    p1_observation.extend(decimal_to_array(pro.hp + 3))
+    p2_observation.extend(decimal_to_array(ant.hp + 3))
+    return [p1_observation, p2_observation]

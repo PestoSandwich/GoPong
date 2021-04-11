@@ -1,4 +1,4 @@
-from pygame_play import *
+from gui import *
 
 G = CommandLineInput()
 G.lock = Lock()
